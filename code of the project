@@ -1,0 +1,207 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.sql.*;
+import java.time.LocalDate;
+
+public class firstexample2 extends JFrame {
+    static final String URL = "jdbc:mysql://localhost:3306/attandance";
+    static final String USER = "root";
+    static final String PASS = "dbms";
+
+    // UI Panels
+    JPanel markPanel;
+    JButton bToggleMarks;
+
+    // Attendance UI Components
+    JTextField tAttRoll, tAttName;
+    JComboBox<String> comboStatus;
+    JTable attTable; DefaultTableModel attModel;
+
+    // Marks UI Components
+    JTextField tMarkRoll, tMarkName, tM1, tM2;
+    JTable markTable; DefaultTableModel markModel;
+
+    public firstexample2() {
+        setTitle("Student Management System");
+        setSize(1200, 900);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS)); 
+
+        // --- SECTION 1: DAILY ATTENDANCE (TOP) ---
+        JPanel attPanel = new JPanel(new BorderLayout());
+        attPanel.setBorder(BorderFactory.createTitledBorder("Daily Attendance Management"));
+        attPanel.setMaximumSize(new Dimension(1200, 400));
+        
+        JPanel attInput = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        attInput.add(new JLabel("Roll No:")); tAttRoll = new JTextField(10); attInput.add(tAttRoll);
+        attInput.add(new JLabel("Name:")); tAttName = new JTextField(20); attInput.add(tAttName);
+        attInput.add(new JLabel("Status:")); 
+        comboStatus = new JComboBox<>(new String[]{"Yes", "No"}); attInput.add(comboStatus);
+        
+        JButton bAttSave = new JButton("Save New");
+        JButton bAttUpdate = new JButton("Update Status");
+        JButton bAttDel = new JButton("Delete");
+        bToggleMarks = new JButton("Show Student Marks");
+
+        bAttSave.setBackground(new Color(0, 153, 76)); bAttSave.setForeground(Color.WHITE);
+        bAttUpdate.setBackground(new Color(255, 153, 51)); bAttUpdate.setForeground(Color.WHITE);
+        bAttDel.setBackground(new Color(204, 0, 0)); bAttDel.setForeground(Color.WHITE);
+        bToggleMarks.setBackground(new Color(102, 0, 153)); bToggleMarks.setForeground(Color.WHITE);
+        
+        attInput.add(bAttSave); attInput.add(bAttUpdate); attInput.add(bAttDel);
+        attInput.add(bToggleMarks);
+        attPanel.add(attInput, BorderLayout.NORTH);
+
+        attModel = new DefaultTableModel(new String[]{"Roll No", "Student Name", "Date", "Status"}, 0);
+        attTable = new JTable(attModel);
+        attPanel.add(new JScrollPane(attTable), BorderLayout.CENTER);
+        add(attPanel);
+
+        // --- SECTION 2: STUDENT MARKS (BOTTOM - HIDDEN BY DEFAULT) ---
+        markPanel = new JPanel(new BorderLayout());
+        markPanel.setBorder(BorderFactory.createTitledBorder("Student Marks"));
+        markPanel.setVisible(false); 
+
+        JPanel markInput = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        markInput.add(new JLabel("Roll No:")); tMarkRoll = new JTextField(10); markInput.add(tMarkRoll);
+        markInput.add(new JLabel("Name:")); tMarkName = new JTextField(20); markInput.add(tMarkName);
+        markInput.add(new JLabel("Sub 1:")); tM1 = new JTextField(5); markInput.add(tM1);
+        markInput.add(new JLabel("Sub 2:")); tM2 = new JTextField(5); markInput.add(tM2);
+
+        JButton bMarkSave = new JButton("Save Marks");
+        JButton bMarkUpdate = new JButton("Update Marks");
+        JButton bMarkDel = new JButton("Delete Marks");
+
+        bMarkSave.setBackground(new Color(0, 102, 204)); bMarkSave.setForeground(Color.WHITE);
+        bMarkUpdate.setBackground(new Color(255, 153, 51)); bMarkUpdate.setForeground(Color.WHITE);
+        bMarkDel.setBackground(new Color(204, 0, 0)); bMarkDel.setForeground(Color.WHITE);
+        
+        markInput.add(bMarkSave); markInput.add(bMarkUpdate); markInput.add(bMarkDel);
+        markPanel.add(markInput, BorderLayout.NORTH);
+
+        markModel = new DefaultTableModel(new String[]{"Roll No", "Student Name", "Subject 1", "Subject 2", "Total"}, 0);
+        markTable = new JTable(markModel);
+        markPanel.add(new JScrollPane(markTable), BorderLayout.CENTER);
+        add(markPanel);
+
+        // --- TOGGLE ACTION ---
+        bToggleMarks.addActionListener(e -> {
+            boolean isVisible = markPanel.isVisible();
+            markPanel.setVisible(!isVisible);
+            bToggleMarks.setText(isVisible ? "Show Student Marks" : "Hide Student Marks");
+            revalidate(); 
+            repaint();
+        });
+
+        // --- MOUSE CLICK EVENTS ---
+        attTable.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                int r = attTable.getSelectedRow();
+                tAttRoll.setText(attModel.getValueAt(r, 0).toString());
+                tAttName.setText(attModel.getValueAt(r, 1).toString());
+                comboStatus.setSelectedItem(attModel.getValueAt(r, 3).toString());
+            }
+        });
+
+        markTable.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                int r = markTable.getSelectedRow();
+                tMarkRoll.setText(markModel.getValueAt(r, 0).toString());
+                tMarkName.setText(markModel.getValueAt(r, 1).toString());
+                tM1.setText(markModel.getValueAt(r, 2).toString());
+                tM2.setText(markModel.getValueAt(r, 3).toString());
+            }
+        });
+
+        // --- BUTTON ACTIONS ---
+        bAttSave.addActionListener(e -> processAttendance("INSERT"));
+        bAttUpdate.addActionListener(e -> processAttendance("UPDATE"));
+        bAttDel.addActionListener(e -> deleteData("daily_attendance", tAttRoll.getText()));
+        
+        bMarkSave.addActionListener(e -> processMarks("INSERT"));
+        bMarkUpdate.addActionListener(e -> processMarks("UPDATE"));
+        bMarkDel.addActionListener(e -> deleteData("subject_marks", tMarkRoll.getText()));
+
+        refreshTables();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void refreshTables() {
+        attModel.setRowCount(0); 
+        markModel.setRowCount(0);
+        try (Connection c = DriverManager.getConnection(URL, USER, PASS)) {
+            ResultSet r1 = c.createStatement().executeQuery("SELECT roll_no, student_name, attendance_date, status FROM daily_attendance ORDER BY attendance_date DESC");
+            while(r1.next()) {
+                attModel.addRow(new Object[]{ r1.getInt("roll_no"), r1.getString("student_name"), r1.getDate("attendance_date"), r1.getString("status") });
+            }
+            ResultSet r2 = c.createStatement().executeQuery("SELECT roll_no, student_name, subject_1, subject_2, total FROM subject_marks");
+            while(r2.next()) {
+                markModel.addRow(new Object[]{ r2.getInt("roll_no"), r2.getString("student_name"), r2.getInt("subject_1"), r2.getInt("subject_2"), r2.getInt("total") });
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void processAttendance(String type) {
+        if(tAttRoll.getText().isEmpty()) { JOptionPane.showMessageDialog(this, "Enter Roll No!"); return; }
+        String sql = type.equals("INSERT") ? 
+            "INSERT INTO daily_attendance (roll_no, student_name, attendance_date, status) VALUES (?, ?, ?, ?)" :
+            "UPDATE daily_attendance SET status=? WHERE roll_no=? AND attendance_date=?";
+        try (Connection c = DriverManager.getConnection(URL, USER, PASS); PreparedStatement p = c.prepareStatement(sql)) {
+            if (type.equals("INSERT")) {
+                p.setInt(1, Integer.parseInt(tAttRoll.getText()));
+                p.setString(2, tAttName.getText());
+                p.setDate(3, Date.valueOf(LocalDate.now()));
+                p.setString(4, comboStatus.getSelectedItem().toString());
+            } else {
+                p.setString(1, comboStatus.getSelectedItem().toString());
+                p.setInt(2, Integer.parseInt(tAttRoll.getText()));
+                p.setDate(3, Date.valueOf(LocalDate.now()));
+            }
+            p.executeUpdate(); refreshTables();
+            JOptionPane.showMessageDialog(this, "Attendance " + type + " Success!");
+        } catch (Exception e) { JOptionPane.showMessageDialog(this, "Error: " + e.getMessage()); }
+    }
+
+    private void processMarks(String type) {
+        if(tMarkRoll.getText().isEmpty()) { JOptionPane.showMessageDialog(this, "Enter Roll No!"); return; }
+        try (Connection c = DriverManager.getConnection(URL, USER, PASS)) {
+            int m1 = Integer.parseInt(tM1.getText());
+            int m2 = Integer.parseInt(tM2.getText());
+            int tot = m1 + m2;
+            String sql = type.equals("INSERT") ? 
+                "INSERT INTO subject_marks (roll_no, student_name, subject_1, subject_2, total) VALUES(?,?,?,?,?)" :
+                "UPDATE subject_marks SET student_name=?, subject_1=?, subject_2=?, total=? WHERE roll_no=?";
+            PreparedStatement p = c.prepareStatement(sql);
+            if (type.equals("INSERT")) {
+                p.setInt(1, Integer.parseInt(tMarkRoll.getText())); p.setString(2, tMarkName.getText());
+                p.setInt(3, m1); p.setInt(4, m2); p.setInt(5, tot);
+            } else {
+                p.setString(1, tMarkName.getText()); p.setInt(2, m1); p.setInt(3, m2); p.setInt(4, tot);
+                p.setInt(5, Integer.parseInt(tMarkRoll.getText()));
+            }
+            p.executeUpdate(); refreshTables();
+            JOptionPane.showMessageDialog(this, "Marks " + type + " Success!");
+        } catch (Exception e) { JOptionPane.showMessageDialog(this, "Error: " + e.getMessage()); }
+    }
+
+    private void deleteData(String table, String roll) {
+        if(roll.isEmpty()) { JOptionPane.showMessageDialog(this, "Select a record first!"); return; }
+        int conf = JOptionPane.showConfirmDialog(this, "Confirm Delete?", "Confirm", JOptionPane.YES_NO_OPTION);
+        if(conf == JOptionPane.YES_OPTION) {
+            try (Connection c = DriverManager.getConnection(URL, USER, PASS);
+                 PreparedStatement p = c.prepareStatement("DELETE FROM " + table + " WHERE roll_no=?")) {
+                p.setInt(1, Integer.parseInt(roll));
+                p.executeUpdate(); refreshTables();
+                JOptionPane.showMessageDialog(this, "Deleted Successfully!");
+            } catch (Exception e) { JOptionPane.showMessageDialog(this, e.getMessage()); }
+        }
+    }
+
+    public static void main(String[] args) { 
+        SwingUtilities.invokeLater(() -> new firstexample2()); 
+    }
+}
